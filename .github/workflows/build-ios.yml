@@ -1,0 +1,44 @@
+name: Build iOS .ipa (para Sideloadly)
+
+on:
+  push:
+    branches: [ main ]          # Cambia a "master" solo si tu rama principal se llama master
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'     # Cambia a '9.0.x' si tu proyecto usa .NET 9
+
+      - name: Instalar workload MAUI
+        run: dotnet workload install maui
+
+      - name: Compilar y generar .ipa SIN firma (para Sideloadly)
+        run: |
+          dotnet publish "${{ github.workspace }}/prueba Maui.csproj" \
+            -c Release \
+            -f net10.0-ios \                    # ← CAMBIA esto si tu proyecto usa net9.0-ios
+            -p:RuntimeIdentifier=ios-arm64 \
+            -p:BuildIpa=true \
+            -p:ArchiveOnBuild=true \
+            -p:EnableCodeSigning=false \
+            -p:EnablePackageSigning=false \
+            -p:CodesignKey="" \
+            -p:CodesignProvision="" \
+            -p:SignBundle=false \
+            -p:EnableAssemblyILStripping=false
+
+      - name: Subir .ipa como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: PruebaMaui-IPA
+          path: '**/*.ipa'
+          retention-days: 7
